@@ -1,0 +1,64 @@
+extends KinematicBody2D
+
+enum {
+	MOVER,
+	ROLAR,
+	ATACAR
+}
+
+var estado = MOVER
+var velocidade = Vector2.ZERO
+
+const AGILIDADE = 100
+const VELOCIDADE_MAX = 120
+const ACELERACAO = 250
+const ATRITO = 400
+
+onready var animacaoJogador = $AnimationPlayer
+onready var animacaoVariado = $AnimationTree
+onready var animacaoEstado = animacaoVariado.get("parameters/playback")
+
+func _ready():
+	animacaoVariado.active = true
+
+func _physics_process(delta):
+	match estado:
+		MOVER:
+			move_state(delta)
+			
+		ROLAR:
+			pass
+			
+		ATACAR:
+			ataque_state(delta)
+	
+func move_state(delta):
+	var resultante = Vector2.ZERO
+	resultante.x = Input.get_action_strength("d") - Input.get_action_strength("a")
+	resultante.y = Input.get_action_strength("s") - Input.get_action_strength("w")
+	resultante = resultante.normalized()
+	
+	if resultante != Vector2.ZERO:
+		animacaoVariado.set("parameters/Correndo/blend_position", resultante)
+		animacaoVariado.set("parameters/Parado/blend_position", resultante)
+		animacaoVariado.set("parameters/Ataque/blend_position", resultante)
+		
+		velocidade = velocidade.move_toward(resultante * VELOCIDADE_MAX, ACELERACAO * delta)
+		
+		animacaoEstado.travel("Correndo")
+		
+	else: 
+		velocidade = velocidade.move_toward(Vector2.ZERO, ATRITO * delta)
+		animacaoEstado.travel("Parado")
+	
+	move_and_slide(velocidade)
+	
+	if Input.is_action_just_pressed("Atacar"):
+		estado = ATACAR
+	
+func ataque_state(delta):
+	velocidade = Vector2.ZERO
+	animacaoEstado.travel("Ataque")
+	
+func ataque_animation_finished():
+		estado = MOVER
